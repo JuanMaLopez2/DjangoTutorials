@@ -5,6 +5,7 @@ from django.views import View
 from django import forms
 from django.urls import reverse
 from .models import Product
+from .utils import ImageLocalStorage
 
 # Create your views here.
 
@@ -14,7 +15,6 @@ class HomePageView(TemplateView):
 class AboutPageView(TemplateView): 
     template_name = 'pages/about.html' 
 
-
     def get_context_data(self, **kwargs): 
         context = super().get_context_data(**kwargs) 
         context.update({ 
@@ -23,7 +23,6 @@ class AboutPageView(TemplateView):
             "description": "This is an about page ...", 
             "author": "Developed by: Your Name", 
         }) 
-
         return context 
 
 class ProductIndexView(View): 
@@ -102,6 +101,32 @@ class ProductListView(ListView):
         context['subtitle'] = 'List of products' 
         return context
 
+def ImageViewFactory(image_storage): 
+    class ImageView(View): 
+        template_name = 'images/index.html' 
+
+        def get(self, request): 
+            image_url = request.session.get('image_url', '') 
+            return render(request, self.template_name, {'image_url': image_url}) 
+ 
+        def post(self, request): 
+            image_url = image_storage.store(request) 
+            request.session['image_url'] = image_url 
+            return redirect('image_index') 
+    return ImageView 
+
+class ImageViewNoDI(View): 
+    template_name = 'images/index.html' 
+
+    def get(self, request): 
+        image_url = request.session.get('image_url', '') 
+        return render(request, self.template_name, {'image_url': image_url}) 
+
+    def post(self, request): 
+        image_storage = ImageLocalStorage() 
+        image_url = image_storage.store(request) 
+        request.session['image_url'] = image_url 
+        return redirect('image_index')
 class CartView(View): 
 
     template_name = 'cart/index.html' 
@@ -139,3 +164,4 @@ class CartRemoveAllView(View):
         if 'cart_product_data' in request.session: 
             del request.session['cart_product_data'] 
         return redirect('cart_index')
+    
